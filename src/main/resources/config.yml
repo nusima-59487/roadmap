@@ -1,0 +1,8 @@
+database: 
+  path: "localhost"
+  username: "root"
+  password: ""
+  name: "rdmap"
+webserver: 
+  port: 8080
+  host: "localhost"
