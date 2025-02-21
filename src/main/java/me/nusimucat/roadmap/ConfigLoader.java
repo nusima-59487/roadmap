@@ -1,7 +1,5 @@
 package me.nusimucat.roadmap;
 
-
-
 public class ConfigLoader {
     private static final Roadmap pluginInstance = Roadmap.getInstance(); 
 
