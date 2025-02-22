@@ -1,8 +1,17 @@
+# Data storage method. Can either be MySQL ("mysql") or SQLite ("sqlite"). 
+# Doesn't do anything for now, its gonna be mysql anyway
+storage-method: mysql
+
+# Config for MySQL
+# If using SQLite, ignore this
 database: 
-  path: "localhost"
-  username: "root"
-  password: ""
-  name: "rdmap"
+    path: "localhost"
+    username: "root"
+    password: "" # <- this is important
+    name: "rdmap"
+
+# Web server configs
 webserver: 
-  port: 8080
-  host: "localhost"
+    enabled: true
+    host: "localhost"
+    port: 8080
