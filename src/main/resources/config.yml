@@ -1,3 +1,5 @@
+config-version: ${version} # change this and you are dead
+
 # Data storage method. Can either be MySQL ("mysql") or SQLite ("sqlite"). 
 # Doesn't do anything for now, its gonna be mysql anyway
 storage-method: mysql

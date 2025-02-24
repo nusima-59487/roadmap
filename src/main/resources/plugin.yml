@@ -1,5 +1,5 @@
 name: roadmap
-version: '1.0-b1'
+version: '0.0.3'
 main: me.nusimucat.roadmap.Roadmap
 api-version: '1.20'
 description: Road Map Plugin for Minecraft
