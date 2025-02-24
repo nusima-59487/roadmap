@@ -1,13 +1,9 @@
 package me.nusimucat.roadmap;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import me.nusimucat.roadmap.commands.MainCommand;
 
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
@@ -27,21 +23,12 @@ public class Roadmap extends JavaPlugin {
         saveDefaultConfig();
 
         // Auto update config
-        // https://www.spigotmc.org/threads/how-to-make-an-automatic-updating-configuration-file.448964/
-        File langFile = new File(pluginInstance.getDataFolder() + "/config.yml");
-        YamlConfiguration externalYamlConfig = YamlConfiguration.loadConfiguration(langFile);
-        InputStreamReader defConfigStream = new InputStreamReader(getResource("config.yml"), StandardCharsets.UTF_8);
-        YamlConfiguration internalLangConfig = YamlConfiguration.loadConfiguration(defConfigStream);
-        for (String string : internalLangConfig.getKeys(true)) {
-            if (!externalYamlConfig.contains(string)) {
-                externalYamlConfig.set(string, internalLangConfig.get(string));
-            }
-        }
         try {
-            externalYamlConfig.save(langFile);
-        } catch (IOException io) {
-            for (StackTraceElement element: io.getStackTrace()) {
-                loggerInstance.warn(element.toString());
+            ConfigLoader.autoUpdate();
+        } catch (IOException e) {
+            Roadmap.getLoggerInstance().warn("");
+                for (StackTraceElement element: e.getStackTrace()) {
+                    Roadmap.getLoggerInstance().warn(element.toString());
             }
         }
 
