@@ -1,33 +1,30 @@
 package me.nusimucat.roadmap.database;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 
+import org.json.JSONObject;
+
+import me.nusimucat.roadmap.Roadmap;
+import me.nusimucat.roadmap.Utils;
 
 public class DBMethods {
     private static final Connection connectionSQL = DBConnect.getConnection(); 
+    private static final String content = Utils.readFileToString("database-statements.json");
+    private static final JSONObject databaseStatements = new JSONObject(content); 
 
     public void initialization () throws SQLException {
-        PreparedStatement nodeTableStmt = connectionSQL.prepareStatement(
-            "CREATE TABLE IF NOT EXISTS Nodes (" + 
-                "id INT NOT NULL AUTO_INCREMENT, " +
-                "coord_x INT NOT NULL, " + 
-                "coord_z INT NOT NULL, " + 
-                "is_main_node BOOLEAN NOT NULL DEFAULT FALSE, " + 
-                "connection_n INT, " + 
-                "connection_ne INT, " +  
-                "connection_e INT, " + 
-                "connection_se INT, " + 
-                "connection_s INT, " + 
-                "connection_sw INT, " + 
-                "connection_w INT, " + 
-                "connection_nw INT, " + 
-                "create_time DATETIME NOT NULL DEFAULT NOW()," + 
-                "last_update_username VARCHAR(64) NOT NULL, " +
-                "last_update_time DATETIME NOT NULL DEFAULT NOW(), " + 
-                "PRIMARY KEY (id)" +
-            ")"
-        );
-        nodeTableStmt.executeUpdate(); 
+        List<Object> initStatements = databaseStatements.getJSONArray("init").toList(); 
+        for (int x = 0; x < initStatements.size(); x++) {
+            String statement = initStatements.get(x).toString(); 
+            PreparedStatement nodeTableStmt = connectionSQL.prepareStatement(statement);
+            nodeTableStmt.executeUpdate(); 
+        }        
     }
 
     /**
