@@ -11,7 +11,7 @@ public class DBConnect {
     private static Connection connection = null;
     private static final Roadmap pluginInstance = Roadmap.getInstance();
 
-    public static void sqlConnect() throws SQLException {
+    public static void databaseConnect() throws SQLException {
         String storageMethod = ConfigLoader.getStringVal("storage-method");
         // MySQL
         if (storageMethod.equalsIgnoreCase("mysql")) {
@@ -23,8 +23,11 @@ public class DBConnect {
             Roadmap.getLoggerInstance().info("Database (MySQL - " + dbName + ") loaded successfully!"); 
             // TODO: new SylvBankDBTasks().createTables();
         }
-        // SQLite
+        // SQLite TODO
         else if (storageMethod.equalsIgnoreCase("sqlite")) {
+            // Init file if not exists
+            pluginInstance.saveResource("database.sqlite", false);
+            
             connection = DriverManager.getConnection("jdbc:sqlite:plugins/roadmap/database.db");
             Roadmap.getLoggerInstance().info("Database (SQLite) loaded successfully!"); 
         }
@@ -36,7 +39,10 @@ public class DBConnect {
 
     }
 
-    public static Connection getSQLConnection() {
+    public static Connection getConnection() {
         return connection;
+    }
+    public static String getStorageMethod() {
+        return ConfigLoader.getStringVal("storage-method");
     }
 }

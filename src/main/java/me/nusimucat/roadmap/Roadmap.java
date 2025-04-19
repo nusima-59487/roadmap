@@ -4,10 +4,15 @@ import java.io.IOException;
 import java.sql.SQLException;
 import me.nusimucat.roadmap.commands.MainCommand;
 
+import org.bukkit.Material;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import me.nusimucat.roadmap.database.DBConnect;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 
 public class Roadmap extends JavaPlugin {
@@ -16,8 +21,6 @@ public class Roadmap extends JavaPlugin {
 
     @Override
     public void onEnable () {
-        // Plugin startup logic
-
         pluginInstance = this; 
         loggerInstance = pluginInstance.getComponentLogger(); 
         saveDefaultConfig();
@@ -27,15 +30,16 @@ public class Roadmap extends JavaPlugin {
             ConfigLoader.autoUpdate();
         } catch (IOException e) {
             Roadmap.getLoggerInstance().warn("");
-                for (StackTraceElement element: e.getStackTrace()) {
-                    Roadmap.getLoggerInstance().warn(element.toString());
+            for (StackTraceElement element: e.getStackTrace()) {
+                Roadmap.getLoggerInstance().warn(element.toString());
             }
         }
 
 
         // Establish database connection
         try {
-            new DBConnect().sqlConnect();
+            // new DBConnect().sqlConnect();
+            DBConnect.databaseConnect();
             loggerInstance.info("Database connected!"); 
         } 
         catch (SQLException err) {
@@ -44,17 +48,14 @@ public class Roadmap extends JavaPlugin {
             for (StackTraceElement element : err.getStackTrace())
                 loggerInstance.warn(element.toString());
             loggerInstance.error("Disabling plugin due to above error"); 
-
-
-            getServer().getPluginManager().disablePlugin(this);
-            
-            
+            getServer().getPluginManager().disablePlugin(this);   
         }
-        loggerInstance.error("eeeee");
 
-        // Load web server (WIP)
 
-        // load commands (WIP)
+        // TODO Load web server
+
+
+        // load commands
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
             commands.registrar().register(MainCommand.buildcommandmain); 
         });
@@ -64,7 +65,7 @@ public class Roadmap extends JavaPlugin {
     public void onDisable () {
         // Plugin shutdown logic
 
-        // Disconnect from database
+        // TODO Disconnect from database
 
     }
 
@@ -73,5 +74,13 @@ public class Roadmap extends JavaPlugin {
     }
     public static ComponentLogger getLoggerInstance () {
         return loggerInstance; 
+    }
+    static ItemStack getWand (Material material, Component name) {
+        ItemStack wand = new ItemStack(material, 1);
+        ItemMeta wanditm = wand.getItemMeta();
+        wanditm.displayName(name);
+        wand.setItemMeta(wanditm);
+        wand.addUnsafeEnchantment(Enchantment.UNBREAKING, 10);
+        return wand;
     }
 }

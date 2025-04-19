@@ -4,7 +4,116 @@ import java.sql.Connection;
 
 
 public class DBMethods {
-    private final Connection connectionSQL = DBConnect.getSQLConnection(); 
+    private static final Connection connectionSQL = DBConnect.getConnection(); 
 
+    public void initialization () throws SQLException {
+        PreparedStatement nodeTableStmt = connectionSQL.prepareStatement(
+            "CREATE TABLE IF NOT EXISTS Nodes (" + 
+                "id INT NOT NULL AUTO_INCREMENT, " +
+                "coord_x INT NOT NULL, " + 
+                "coord_z INT NOT NULL, " + 
+                "is_main_node BOOLEAN NOT NULL DEFAULT FALSE, " + 
+                "connection_n INT, " + 
+                "connection_ne INT, " +  
+                "connection_e INT, " + 
+                "connection_se INT, " + 
+                "connection_s INT, " + 
+                "connection_sw INT, " + 
+                "connection_w INT, " + 
+                "connection_nw INT, " + 
+                "create_time DATETIME NOT NULL DEFAULT NOW()," + 
+                "last_update_username VARCHAR(64) NOT NULL, " +
+                "last_update_time DATETIME NOT NULL DEFAULT NOW(), " + 
+                "PRIMARY KEY (id)" +
+            ")"
+        );
+        nodeTableStmt.executeUpdate(); 
+    }
 
+    /**
+     * Create a main node
+     * @param xcoords int
+     * @param zcoords int
+     * @param name String
+     * @param hasStopSign Bool
+     * @param hasTrafficLight Bool
+     * @param creatorUuid UUID
+     * @return int - Created Node ID
+     * @throws SQLException if SQL error occurs
+     */
+    public static int createMainNode(
+        int xcoords, int zcoords, String name, Boolean hasStopSign, Boolean hasTrafficLight, UUID creatorUuid
+    ) throws SQLException {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'createMainNode'");
+    }
+
+    public static int createAuxNode(int xcoords, int zcoords, String name, UUID creatorUuid) throws SQLException {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'createAuxNode'");
+    }
+
+    public static int createSegment () throws SQLException {
+        // TODO
+    }
+
+    public static void editMainNode () throws SQLException {
+        // TODO
+    }
+
+    public static void editAuxNode () throws SQLException {
+        // TODO
+    }
+
+    public static void editSegment () throws SQLException {
+        // TODO
+    }
+
+    public static void deleteMainNode () throws SQLException {
+        // TODO
+    }
+
+    public static void deleteAuxNode () throws SQLException {
+        // TODO
+    }
+
+    public static void deleteSegment () throws SQLException {
+        // TODO
+    }
+
+    public static HashMap<String, Object> getNodeInfo(int NodeID) throws SQLException {
+        // TODO Auto-generated method stub
+        // throw new UnsupportedOperationException("Unimplemented method 'getNode'");
+
+        PreparedStatement getNodeStmt = connectionSQL.prepareStatement(
+            "SELECT * FROM Nodes WHERE id = ?"
+        );
+        getNodeStmt.setInt(1, NodeID);
+
+        ResultSet result = getNodeStmt.executeQuery(); 
+        if (result.next()) {
+            HashMap<String, Object> nodeInfo = new HashMap<String, Object>(); 
+            nodeInfo.put("coord_x", result.getInt("coord_x")); 
+            nodeInfo.put("coord_z", result.getInt("coord_z")); 
+            nodeInfo.put("is_main_node", result.getBoolean("is_main_node")); 
+            nodeInfo.put("connection_n", result.getInt("connection_n")); 
+            nodeInfo.put("connection_ne", result.getInt("connection_ne")); 
+            nodeInfo.put("connection_e", result.getInt("connection_e")); 
+            nodeInfo.put("connection_se", result.getInt("connection_se")); 
+            nodeInfo.put("connection_s", result.getInt("connection_s")); 
+            nodeInfo.put("connection_sw", result.getInt("connection_sw")); 
+            nodeInfo.put("connection_w", result.getInt("connection_w")); 
+            nodeInfo.put("connection_nw", result.getInt("connection_nw")); 
+            nodeInfo.put("create_time", result.getTimestamp("create_time")); 
+            nodeInfo.put("last_update_username", result.getString("last_update_username")); 
+            nodeInfo.put("last_update_time", result.getTimestamp("last_update_time")); 
+            return nodeInfo; 
+        }
+        return null; 
+    }
+
+    public static HashMap<String, Object> getSegmentInfo(int SegmentID) throws SQLException {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getSegmentInfo'");
+    }
 }
