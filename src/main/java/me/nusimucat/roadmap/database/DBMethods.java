@@ -10,21 +10,25 @@ import java.util.UUID;
 
 import org.json.JSONObject;
 
-import me.nusimucat.roadmap.Roadmap;
 import me.nusimucat.roadmap.Utils;
+import me.nusimucat.roadmap.Node.Directions;
 
 public class DBMethods {
     private static final Connection connectionSQL = DBConnect.getConnection(); 
-    private static final String content = Utils.readFileToString("database-statements.json");
+    private static final String content = Utils.readFileToString(DBConnect.getStorageMethod() + "-statements.json");
     private static final JSONObject databaseStatements = new JSONObject(content); 
 
-    public void initialization () throws SQLException {
+    /**
+     * Initialize database
+     * @throws SQLException
+     */
+    public void init () throws SQLException {
         List<Object> initStatements = databaseStatements.getJSONArray("init").toList(); 
-        for (int x = 0; x < initStatements.size(); x++) {
-            String statement = initStatements.get(x).toString(); 
-            PreparedStatement nodeTableStmt = connectionSQL.prepareStatement(statement);
+        for (Object statement : initStatements) {
+            PreparedStatement nodeTableStmt = connectionSQL.prepareStatement(statement.toString());
             nodeTableStmt.executeUpdate(); 
-        }        
+        }
+        return; 
     }
 
     /**
@@ -34,7 +38,7 @@ public class DBMethods {
      * @param name String
      * @param hasStopSign Bool
      * @param hasTrafficLight Bool
-     * @param creatorUuid UUID
+     * @param creatorUuid UUID, null for console
      * @return int - Created Node ID
      * @throws SQLException if SQL error occurs
      */
@@ -50,15 +54,11 @@ public class DBMethods {
         throw new UnsupportedOperationException("Unimplemented method 'createAuxNode'");
     }
 
-    public static int createSegment () throws SQLException {
+    public static int createSegment (int startNodeID, Directions startNodeDir, int endNodeID, Directions endNodeDir, int lanesForward, int lanesBackward, String type, UUID createUser) throws SQLException {
         // TODO
     }
 
-    public static void editMainNode () throws SQLException {
-        // TODO
-    }
-
-    public static void editAuxNode () throws SQLException {
+    public static void updateNode () throws SQLException {
         // TODO
     }
 
@@ -66,11 +66,7 @@ public class DBMethods {
         // TODO
     }
 
-    public static void deleteMainNode () throws SQLException {
-        // TODO
-    }
-
-    public static void deleteAuxNode () throws SQLException {
+    public static void deleteNode () throws SQLException {
         // TODO
     }
 
@@ -82,9 +78,7 @@ public class DBMethods {
         // TODO Auto-generated method stub
         // throw new UnsupportedOperationException("Unimplemented method 'getNode'");
 
-        PreparedStatement getNodeStmt = connectionSQL.prepareStatement(
-            "SELECT * FROM Nodes WHERE id = ?"
-        );
+        PreparedStatement getNodeStmt = connectionSQL.prepareStatement(databaseStatements.getString("get_node_from_id"));
         getNodeStmt.setInt(1, NodeID);
 
         ResultSet result = getNodeStmt.executeQuery(); 
