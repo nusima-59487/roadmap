@@ -15,7 +15,7 @@ import com.mojang.brigadier.tree.LiteralCommandNode;
 
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
-import me.nusimucat.roadmap.RmpInspector;
+import me.nusimucat.roadmap.Editor;
 
 public class MainCommand {
 
@@ -36,9 +36,9 @@ public class MainCommand {
                 }
 
                 Player player = (Player) executor;
-                if (RmpInspector.getInspector(player) != null) {
+                if (Editor.getEditor(player) != null) {
                     // Player is already an inspector
-                    RmpInspector playerInspector = RmpInspector.getInspector(player);
+                    Editor playerInspector = Editor.getEditor(player);
                 }
                 player.sendMessage("Hello, " + player.getName() + "!");
                 return Command.SINGLE_SUCCESS; 
