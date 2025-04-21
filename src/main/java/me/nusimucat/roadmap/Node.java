@@ -6,9 +6,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.UUID;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.entity.Player;
 
 import me.nusimucat.roadmap.database.DBMethods;
 
@@ -28,7 +26,7 @@ public class Node {
 
     private boolean isInDatabase = false; 
     private boolean isSyncToDatabase = false; 
-    private Player activeEditor; 
+    private Editor activeEditor; 
 
     public static enum Directions {
         NORTH("n"), 
@@ -96,13 +94,14 @@ public class Node {
         return nodeToReturn;
     }
 
-    public static Node newNode (int coordx, int coordz, boolean isAux, UUID creatorUUID) {
-        Node toReturn = new Node(coordx, coordz, "", isAux, new HashMap<Directions, Integer>(), false, false, Timestamp.valueOf(LocalDateTime.now()), creatorUUID, Timestamp.valueOf(LocalDateTime.now())); 
-        toReturn.activeEditor = Bukkit.getPlayer(creatorUUID); 
+    public static Node newNode (int coordx, int coordz, boolean isAux, Editor editor) {
+        Node toReturn = new Node(coordx, coordz, "", isAux, new HashMap<Directions, Integer>(), false, false, Timestamp.valueOf(LocalDateTime.now()), editor.getPlayer().getUniqueId(), Timestamp.valueOf(LocalDateTime.now())); 
+        // toReturn.activeEditor = Bukkit.getPlayer(creatorUUID); 
+        toReturn.activeEditor = editor; 
         return toReturn; 
     }
 
-    public void setActiveEditor (Player editor) {
+    public void setActiveEditor (Editor editor) {
         this.activeEditor = editor; 
     }
 
@@ -124,73 +123,77 @@ public class Node {
     public int getLocationX () {return this.coordx;}
     public int getLocationZ () {return this.coordz;}
     public void setLocation (Location location) {
-        if (this.activeEditor == null) throw new IllegalStateException("No active users selected"); 
+        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         this.coordx = location.getBlockX(); 
         this.coordz = location.getBlockZ(); 
         this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getUniqueId(); 
+        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
         this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
     }
     public void setLocation (int coordX, int coordZ) {
-        if (this.activeEditor == null) throw new IllegalStateException("No active users selected"); 
+        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         this.coordx = coordX; 
         this.coordz = coordZ; 
         this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getUniqueId(); 
+        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
         this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
     }
     public void setLocationX (int coordX) {
-        if (this.activeEditor == null) throw new IllegalStateException("No active users selected"); 
+        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         this.coordx = coordX;
         this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getUniqueId(); 
+        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
         this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
     }
     public void setLocationZ (int coordZ) {
-        if (this.activeEditor == null) throw new IllegalStateException("No active users selected"); 
+        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         this.coordz = coordZ;
         this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getUniqueId(); 
+        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
         this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
     }
     public String getName () {return this.name;}
     public void setName (String name) {
-        if (this.activeEditor == null) throw new IllegalStateException("No active users selected"); 
+        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         this.name = name;
         this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getUniqueId(); 
+        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
         this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
     }
     public void addSegmentConnection (Segment segment, Directions direction) {
         if (this.connections.get(direction) != null) {
             throw new IllegalArgumentException(String.format("Direction %s already has a connection with another segment (ID %g)", direction, segment.getId()));
         }
-        if (this.activeEditor == null) throw new IllegalStateException("No active users selected"); 
+        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         this.connections.put(direction, segment.getId()); 
         this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getUniqueId(); 
+        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
         this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
     }
     public void removeSegmentConnection (Directions direction) {
-        if (this.activeEditor == null) throw new IllegalStateException("No active users selected"); 
+        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         this.connections.remove(direction); 
         this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getUniqueId(); 
+        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
         this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
     }
     public void removeSegmentConnection (Segment segment) {
         if (this.connections.containsValue(segment.getId())) {
-            if (this.activeEditor == null) throw new IllegalStateException("No active users selected"); 
+            if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
             Directions key = Utils.getKeyByValue(this.connections, segment.getId());
             this.removeSegmentConnection(key);
             this.isSyncToDatabase = false;  
-            this.lastUpdateUserUUID = this.activeEditor.getUniqueId(); 
+            this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
             this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
         }
     }
     // public HashMap<Directions,Integer> getSegmentConnections () {
     //     return this.connections; 
     // }
+    public Segment getSegmentFromConnection (Directions direction) {
+        int segmentId = this.connections.get(direction); 
+        return Segment.fromDatabase(segmentId); 
+    }
     public LocalDateTime getCreationTime () {
         return this.createTime.toLocalDateTime(); 
     }
@@ -207,12 +210,12 @@ public class Node {
         return this.isAuxNode; 
     }
     public void setAux (boolean isAux) {
-        if (this.activeEditor == null) throw new IllegalStateException("No active users selected"); 
+        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         if (isAux == this.isAuxNode) return; 
         if (isAux) this.isAuxNode = true; 
         else this.isAuxNode = false; 
         this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getUniqueId(); 
+        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
         this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
     }
     /**@return If aux, return <code>false</code>*/
@@ -222,11 +225,11 @@ public class Node {
     }
     public void hasStopSign (boolean state) {
         if (this.isAuxNode) throw new IllegalStateException("Cannot change state hasStopSign for aux nodes"); 
-        if (this.activeEditor == null) throw new IllegalStateException("No active users selected"); 
+        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         if (this.hasStopSign == state) return; 
         this.hasStopSign = state; 
         if (state) this.hasTrafficLight = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getUniqueId(); 
+        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
         this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
     }
     /**@return If aux, return <code>false</code>*/
@@ -236,11 +239,11 @@ public class Node {
     }
     public void hasTrafficLight (boolean state) {
         if (this.isAuxNode) throw new IllegalStateException("Cannot change state hasStopSign for aux nodes"); 
-        if (this.activeEditor == null) throw new IllegalStateException("No active users selected"); 
+        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         if (this.hasTrafficLight == state) return; 
         this.hasTrafficLight = state; 
         if (state) this.hasStopSign = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getUniqueId(); 
+        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
         this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
     }
     public Segment getAssociatedSegment () {
