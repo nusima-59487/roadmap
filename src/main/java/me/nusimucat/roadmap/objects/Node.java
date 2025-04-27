@@ -1,4 +1,4 @@
-package me.nusimucat.roadmap;
+package me.nusimucat.roadmap.objects;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -8,6 +8,9 @@ import java.util.UUID;
 
 import org.bukkit.Location;
 
+import me.nusimucat.roadmap.Editor;
+import me.nusimucat.roadmap.Roadmap;
+import me.nusimucat.roadmap.Utils;
 import me.nusimucat.roadmap.database.DBMethods;
 
 public class Node {
@@ -105,18 +108,18 @@ public class Node {
         this.activeEditor = editor; 
     }
 
-    public void removeActiveEditor () {
+    public void removeActiveEditor () { // TODO: remake into dropEditor + remove changes
         this.activeEditor = null; 
     }
 
     public void saveToDatabase () {
-        if (this.isInDatabase) {
+        if (this.isInDatabase && this.isSyncToDatabase) return; 
+        else if (this.isInDatabase) {
             // Update
-            
         } else {
             // Insert
-            // DBMethods.
         }
+        this.isSyncToDatabase = true; 
     }
 
     public int getId () {return this.nodeId;}
