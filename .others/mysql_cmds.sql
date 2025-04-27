@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS Segments (
     lane_count_backward INT DEFAULT 2,
     speed_limit INT NOT NULL DEFAULT 50,
     road_type VARCHAR(15) NOT NULL DEFAULT "Road",
+    name VARCHAR(256), 
     create_time DATETIME NOT NULL DEFAULT NOW(),
     last_update_user_uuid VARCHAR(36) NOT NULL,
     last_update_time DATETIME NOT NULL DEFAULT NOW(),
