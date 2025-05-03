@@ -65,5 +65,10 @@
             <artifactId>undertow-core</artifactId>
             <version>2.3.16.Final</version>
         </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20250107</version>
+        </dependency>
     </dependencies>
 </project>
