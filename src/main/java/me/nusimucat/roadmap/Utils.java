@@ -50,4 +50,21 @@ public class Utils {
         }
         return null;
     }
+
+    /**@return <code>1</code> - compare > base; <code>0</code> - compare = base; <code>-1</code> - compare < base */
+    public static int versionCheck (String base, String compare) {
+        String[] baseVersion = base.split("\\."); 
+        String[] compareVersion = compare.split("\\."); 
+        int length = Math.max(baseVersion.length, compareVersion.length);
+        for (int i = 0; i < length; i++) {
+            int baseSubV = (i < baseVersion.length) ? Integer.parseInt(baseVersion[i]) : 0;
+            int compareSubV = (i < compareVersion.length) ? Integer.parseInt(compareVersion[i]) : 0;
+            if (compareSubV > baseSubV) {
+                return 1; 
+            } else if (baseSubV > compareSubV) {
+                return -1; 
+            }
+        }
+        return 0;
+    }
 }

@@ -20,16 +20,8 @@ public class ConfigLoader {
         InputStreamReader defConfigStream = new InputStreamReader(pluginInstance.getResource("config.yml"), StandardCharsets.UTF_8);
         YamlConfiguration internalConfig = YamlConfiguration.loadConfiguration(defConfigStream); // internal: within jar
 
-        String[] storedConfigVersion = ConfigLoader.getStringVal("version").split("\\."); 
-        String[] pluginConfigVersion = internalConfig.getString("version").split("\\."); 
-        int length = Math.max(storedConfigVersion.length, pluginConfigVersion.length);
-
-        for (int i = 0; i < length; i++) {
-            int storedSubv = (i < storedConfigVersion.length) ? Integer.parseInt(storedConfigVersion[i]) : 0;
-            int pluginSubv = (i < pluginConfigVersion.length) ? Integer.parseInt(pluginConfigVersion[i]) : 0;
-
-            if (pluginSubv > storedSubv) {
-                // config outdated
+        switch (Utils.versionCheck(ConfigLoader.getStringVal("version"), internalConfig.getString("version"))) {
+            case 1: // config outdated
                 Roadmap.getLoggerInstance().info("Config file outdated. Attempting to update...");
                 // loop thru existing key-val pairs and apply to new (it only maybe works)
                 for (String str: configInstance.getKeys(true)) {
@@ -37,19 +29,21 @@ public class ConfigLoader {
                     else Roadmap.getLoggerInstance().warn("Following config no longer applies: " + str); 
                 }
                 internalConfig.save(configFile);
-            } else if (storedSubv > pluginSubv) {
+                break;
+            case -1: // plugin outdated
                 Roadmap.getLoggerInstance().error("The plugin is outdated! Please download the latest version. :(");
-
                 Roadmap.getLoggerInstance().error("Disabling plugin due to above error"); 
                 Roadmap.getInstance().getServer().getPluginManager().disablePlugin(Roadmap.getInstance()); 
-            }
+                break; 
+            default:
+                break;
         }
     }
 
     public static String getStringVal (String key) {
-        return pluginInstance.getConfig().getString(key); 
+        return configInstance.getString(key); 
     }
     public static int getIntVal (String key) {
-        return pluginInstance.getConfig().getInt(key); 
+        return configInstance.getInt(key); 
     }
 }
