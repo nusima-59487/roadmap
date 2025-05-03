@@ -1,4 +1,4 @@
-package me.nusimucat.roadmap;
+package me.nusimucat.roadmap.objects;
 
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -6,6 +6,7 @@ import java.util.HashMap;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+import me.nusimucat.roadmap.Wands;
 import me.nusimucat.roadmap.database.DBMethods;
 
 public class Editor {
@@ -30,6 +31,9 @@ public class Editor {
         }
         return null; 
     }
+    public Player getPlayer () {
+        return this.player; 
+    }
 
     // public static boolean playerIsInsp
 
@@ -50,7 +54,7 @@ public class Editor {
         }
     }
 
-    public void disableInspector () {
+    public void disableInspector () {   
         // Reset Inventory if editor
         if (this.playerMode == PlayerMode.EDITOR)
             this.player.getInventory().setContents(playerInventory);
@@ -59,9 +63,10 @@ public class Editor {
 
     public void editorSetWands () {
         this.player.getInventory().setItem(0, Wands.Inspector.getItem()); 
-        this.player.getInventory().setItem(5, Wands.AuxNodeBuilder.getItem()); 
-        this.player.getInventory().setItem(7, Wands.NodeBuilder.getItem()); 
-        this.player.getInventory().setItem(8, Wands.SegmentBuilder.getItem()); 
+        this.player.getInventory().setItem(3, Wands.NodeBuilder.getItem()); 
+        this.player.getInventory().setItem(4, Wands.SegmentBuilder.getItem()); 
+        this.player.getInventory().setItem(6, Wands.AuxNodeBuilder.getItem()); 
+        this.player.getInventory().setItem(8, Wands.StylePainter.getItem()); 
     }
     
     // public Node getNodeInfo () {
@@ -72,15 +77,29 @@ public class Editor {
     //     // return this.getNearestSegment(xcoords, zcoords).getinfo()
     // }
 
-    public void createMainNode ( // add coordinate
+    // public void createMainNode ( // add coordinate
+    //     String name, Boolean hasStopSign, Boolean hasTrafficLight
+    // ) throws SQLException {
+    //     int xcoords = this.player.getLocation().getBlockX(); // no
+    //     int zcoords = this.player.getLocation().getBlockZ();
+    //     if (name == null) name = ""; 
+    //     if (hasStopSign == null) hasStopSign = false; 
+    //     if (hasTrafficLight == null) hasTrafficLight = false; 
+    //     DBMethods.createMainNode(xcoords, zcoords, name, hasStopSign, hasTrafficLight, this.player.getUniqueId()); 
+    // }
+
+    public Node createMainNode (
         String name, Boolean hasStopSign, Boolean hasTrafficLight
-    ) throws SQLException {
-        int xcoords = this.player.getLocation().getBlockX(); // no
-        int zcoords = this.player.getLocation().getBlockZ();
-        if (name == null) name = ""; 
-        if (hasStopSign == null) hasStopSign = false; 
-        if (hasTrafficLight == null) hasTrafficLight = false; 
-        DBMethods.createMainNode(xcoords, zcoords, name, hasStopSign, hasTrafficLight, this.player.getUniqueId()); 
+        , int xcoords, int zcoords // temp
+    ) {
+        Node toReturn = Node.simpleConstruct(
+            xcoords, zcoords, false, this); 
+        toReturn.setName(name, this);
+        toReturn.hasStopSign(hasStopSign, this);
+        toReturn.hasTrafficLight(hasTrafficLight, this);
+
+        toReturn.updateToDatabase();
+        return toReturn; 
     }
 
     public void createAuxNode (String name) throws SQLException {
