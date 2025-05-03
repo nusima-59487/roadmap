@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS Segments (
     starting_node INTEGER NOT NULL,
     ending_node INTEGER NOT NULL,
     is_one_way BOOLEAN NOT NULL DEFAULT 0, 
+    /* y_index TINYINT UNSIGNED NOT NULL DEFAULT 10, */
     lane_count_forward INTEGER NOT NULL DEFAULT 2,
     lane_count_backward INTEGER DEFAULT 2,
     speed_limit INTEGER NOT NULL DEFAULT 50,
