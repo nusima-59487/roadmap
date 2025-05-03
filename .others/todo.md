@@ -3,10 +3,10 @@
 - [ ] database methods
 - [ ] Add main & display nodes
 > - Conflict: Segment drawing btwn main nodes and display nodes? 
-> - [ ] Idea: New table for display nodes (SegmentID, AuxNodeID, Index)
+> - [x] Idea: New table for display nodes (SegmentID, AuxNodeID, Index)
 - [ ] Segments btwn existing / when add new node
 > - Ending must be main
-- [ ] method entry points
+- [x] method APIs
 - [ ] /rdm command
 > - [x] Main command framework
 > - [ ] inspector mode - particles
