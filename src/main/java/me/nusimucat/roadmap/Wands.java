@@ -28,12 +28,19 @@ public enum Wands {
         Material.GOLDEN_SHOVEL, 
         "Add Visual Node", 
         NamedTextColor.YELLOW, 
-        "Add a visual node at selected segment\nLeft Click: Select Block to Add Node\nRight Click: Select highlighted segment"), 
+        "Add a visual node at selected segment\nLeft Click: Select Block to Add Node\nRight Click: Select highlighted segment"
+    ), 
     Inspector (
         Material.IRON_AXE, 
         "View Highlighted", 
         NamedTextColor.GREEN, 
         "View/Edit details for highlighted node/segment\nLeft Click: Edit propereties of highlighted item\nRight Click: Print propereties in chat"
+    ), 
+    StylePainter (
+        Material.WOODEN_HOE,
+        "Style Painter", 
+        NamedTextColor.GRAY, 
+        "Apply propereties from selected node/segment to another\nLeft Click: Apply to highlighted item\nRight Click: Select highlighted item as source"
     ); 
 
     private final Material wandMaterial;

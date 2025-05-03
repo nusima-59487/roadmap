@@ -7,29 +7,21 @@ import java.util.HashMap;
 import java.util.UUID;
 
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 
-import me.nusimucat.roadmap.Editor;
 import me.nusimucat.roadmap.Roadmap;
 import me.nusimucat.roadmap.Utils;
 import me.nusimucat.roadmap.database.DBMethods;
 
-public class Node {
-    private int nodeId; // null if not in database (NO CONNECTIONS)
+public class Node extends Element {
     private int coordx; 
     private int coordz; 
-    private String name; 
     private HashMap<Directions, Integer> connections; // <Direction, SgementIDS>
-    private Timestamp createTime;
-    private UUID lastUpdateUserUUID;
-    private Timestamp lastUpdateTime;
     private boolean isAuxNode; 
     private boolean hasStopSign; // null if aux
     private boolean hasTrafficLight; // null if aux
     private int associatedSegmentId; // aux node only, null otherwise
-
-    private boolean isInDatabase = false; 
-    private boolean isSyncToDatabase = false; 
-    private Editor activeEditor; 
+    private int lodLevel; //aux node only, null otherwise
 
     public static enum Directions {
         NORTH("n"), 
@@ -54,19 +46,28 @@ public class Node {
         }
     }; 
     
-    private Node (int coordx, int coordz, String name, boolean isAuxNode, HashMap<Directions, Integer> connections, boolean hasStopSign, boolean hasTrafficLight, Timestamp createTime, UUID lastUpdateUserUUID, Timestamp lastUpdateTime) {
+    private Node (
+        int coordx, 
+        int coordz, 
+        String name, 
+        boolean isAuxNode, 
+        HashMap<Directions, Integer> connections, 
+        boolean hasStopSign, 
+        boolean hasTrafficLight, 
+        Timestamp createTime, 
+        UUID lastUpdateUserUUID, 
+        Timestamp lastUpdateTime
+    ) {
+        super(name, createTime, lastUpdateTime, lastUpdateUserUUID); 
         this.coordx = coordx; 
         this.coordz = coordz; 
-        this.name = name; 
         this.isAuxNode = isAuxNode; 
         this.connections = connections; 
         this.hasStopSign = hasStopSign; 
         this.hasTrafficLight = hasTrafficLight; 
-        this.createTime = createTime; 
-        this.lastUpdateUserUUID = lastUpdateUserUUID; 
-        this.lastUpdateTime = lastUpdateTime; 
     }
 
+    /** Constructor from Database */
     public static Node fromDatabase (int nodeId) {
         HashMap<String,Object> nodeInfo; 
         try {
@@ -91,164 +92,140 @@ public class Node {
             (UUID) nodeInfo.get("last_update_user_uuid"),
             (Timestamp) nodeInfo.get("last_update_time")
         ); 
-        nodeToReturn.nodeId = nodeId;
+        nodeToReturn.id = nodeId;
         nodeToReturn.isInDatabase = true;
         nodeToReturn.isSyncToDatabase = true; 
         return nodeToReturn;
     }
 
-    public static Node newNode (int coordx, int coordz, boolean isAux, Editor editor) {
-        Node toReturn = new Node(coordx, coordz, "", isAux, new HashMap<Directions, Integer>(), false, false, Timestamp.valueOf(LocalDateTime.now()), editor.getPlayer().getUniqueId(), Timestamp.valueOf(LocalDateTime.now())); 
-        // toReturn.activeEditor = Bukkit.getPlayer(creatorUUID); 
-        toReturn.activeEditor = editor; 
+    public static Node simpleConstruct (int coordx, int coordz, boolean isAux, Editor editor) {
+        // TODO: get default from editor
+        Node toReturn = new Node(        
+            coordx, 
+            coordz, 
+            "", 
+            isAux, 
+            new HashMap<Directions, Integer>(), 
+            false, 
+            false, 
+            Timestamp.valueOf(LocalDateTime.now()), 
+            editor == null ? null : editor.getPlayer().getUniqueId(), 
+            Timestamp.valueOf(LocalDateTime.now())
+        ); 
         return toReturn; 
     }
 
-    public void setActiveEditor (Editor editor) {
-        this.activeEditor = editor; 
-    }
-
-    public void removeActiveEditor () { // TODO: remake into dropEditor + remove changes
-        this.activeEditor = null; 
-    }
-
-    public void saveToDatabase () {
-        if (this.isInDatabase && this.isSyncToDatabase) return; 
-        else if (this.isInDatabase) {
-            // Update
-        } else {
-            // Insert
+    @Override
+    public void updateToDatabase () {
+        try {
+            if (this.isInDatabase && this.isSyncToDatabase) return; 
+            else if (this.isInDatabase) {
+                // Update
+            } else {
+                // Insert
+                int nodeId = DBMethods.createMainNode(this); 
+                this.id = nodeId; 
+                this.isInDatabase = true; 
+            }
+            this.isSyncToDatabase = true; 
+        } catch (SQLException e) {
+            // TODO: handle exception
         }
-        this.isSyncToDatabase = true; 
     }
 
-    public int getId () {return this.nodeId;}
     public int getLocationX () {return this.coordx;}
     public int getLocationZ () {return this.coordz;}
-    public void setLocation (Location location) {
-        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
+    public void setLocation (Location location, Editor editor) {
         this.coordx = location.getBlockX(); 
         this.coordz = location.getBlockZ(); 
-        this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
-        this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
+        this.updateHistory(editor); 
     }
-    public void setLocation (int coordX, int coordZ) {
-        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
+    public void setLocation (int coordX, int coordZ, Editor editor) {
         this.coordx = coordX; 
         this.coordz = coordZ; 
-        this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
-        this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
+        this.updateHistory(editor); 
     }
-    public void setLocationX (int coordX) {
-        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
+    public void setLocationX (int coordX, Editor editor) {
         this.coordx = coordX;
-        this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
-        this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
+        this.updateHistory(editor); 
     }
-    public void setLocationZ (int coordZ) {
-        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
+    public void setLocationZ (int coordZ, Editor editor) {
         this.coordz = coordZ;
-        this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
-        this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
+        this.updateHistory(editor); 
     }
-    public String getName () {return this.name;}
-    public void setName (String name) {
-        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
-        this.name = name;
-        this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
-        this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
-    }
-    public void addSegmentConnection (Segment segment, Directions direction) {
+    public void addSegmentConnection (Segment segment, Directions direction, Editor editor) {
         if (this.connections.get(direction) != null) {
             throw new IllegalArgumentException(String.format("Direction %s already has a connection with another segment (ID %g)", direction, segment.getId()));
         }
-        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         this.connections.put(direction, segment.getId()); 
-        this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
-        this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
+        this.updateHistory(editor); 
     }
-    public void removeSegmentConnection (Directions direction) {
-        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
+    public void removeSegmentConnection (Directions direction, Editor editor) {
         this.connections.remove(direction); 
-        this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
-        this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
+        updateHistory(editor);    
     }
-    public void removeSegmentConnection (Segment segment) {
+    public void removeSegmentConnection (Segment segment, Editor editor) {
         if (this.connections.containsValue(segment.getId())) {
-            if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
             Directions key = Utils.getKeyByValue(this.connections, segment.getId());
-            this.removeSegmentConnection(key);
-            this.isSyncToDatabase = false;  
-            this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
-            this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
+            this.removeSegmentConnection(key, editor);
         }
     }
-    // public HashMap<Directions,Integer> getSegmentConnections () {
-    //     return this.connections; 
-    // }
-    public Segment getSegmentFromConnection (Directions direction) {
+    public Segment getSegmentFromDirection (Directions direction) {
         int segmentId = this.connections.get(direction); 
         return Segment.fromDatabase(segmentId); 
     }
-    public LocalDateTime getCreationTime () {
-        return this.createTime.toLocalDateTime(); 
-    }
-    public LocalDateTime getLastUpdateTime () {
-        return this.lastUpdateTime.toLocalDateTime(); 
-    }
-    /**
-     * @return Last update user uuid, <code>null</code> for console
-     */
-    public UUID getLastUpdateUserUuid () {
-        return this.lastUpdateUserUUID; 
+    public Directions getDirectionFromSegment (Segment segment) {
+        if (this.connections.containsValue(segment.getId())) {
+            Directions key = Utils.getKeyByValue(this.connections, segment.getId()); 
+            return key; 
+        }
+        return null; 
     }
     public boolean isAux () {
         return this.isAuxNode; 
     }
-    public void setAux (boolean isAux) {
-        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
+    public void setAux (boolean isAux, Editor editor) {
         if (isAux == this.isAuxNode) return; 
         if (isAux) this.isAuxNode = true; 
         else this.isAuxNode = false; 
-        this.isSyncToDatabase = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
-        this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
+        this.updateHistory(editor);
     }
     /**@return If aux, return <code>false</code>*/
     public boolean hasStopSign () {
         if (this.isAuxNode) return false; 
         return this.hasStopSign; 
     }
-    public void hasStopSign (boolean state) {
+    public void hasStopSign (boolean state, Editor editor) {
         if (this.isAuxNode) throw new IllegalStateException("Cannot change state hasStopSign for aux nodes"); 
-        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         if (this.hasStopSign == state) return; 
         this.hasStopSign = state; 
         if (state) this.hasTrafficLight = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
-        this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
+        this.updateHistory(editor);
     }
     /**@return If aux, return <code>false</code>*/
     public boolean hasTrafficLight () {
         if (this.isAuxNode) return false; 
         return this.hasTrafficLight; 
     }
-    public void hasTrafficLight (boolean state) {
+    public void hasTrafficLight (boolean state, Editor editor) {
         if (this.isAuxNode) throw new IllegalStateException("Cannot change state hasStopSign for aux nodes"); 
-        if (this.activeEditor == null) throw new IllegalStateException("Unknown player editing"); 
         if (this.hasTrafficLight == state) return; 
         this.hasTrafficLight = state; 
         if (state) this.hasStopSign = false; 
-        this.lastUpdateUserUUID = this.activeEditor.getPlayer().getUniqueId(); 
-        this.lastUpdateTime = Timestamp.valueOf(LocalDateTime.now()); 
+        this.updateHistory(editor);
     }
+
+    /**@return If aux, return <code>-1</code>*/
+    public int getLODLevel () {
+        if (!this.isAuxNode) return -1; 
+        return this.lodLevel; 
+    }
+    public void setLODLevel (int lodLevel, Editor editor) {
+        if (!this.isAuxNode) throw new IllegalStateException("Cannot change LOD Level for main nodes"); 
+        this.lodLevel = lodLevel; 
+        this.updateHistory(editor); 
+    }
+
     public Segment getAssociatedSegment () {
         if (!this.isAuxNode) throw new IllegalStateException("Main nodes do not have associated segment"); 
         return Segment.fromDatabase(this.associatedSegmentId); 
@@ -256,4 +233,34 @@ public class Node {
     public void setAssociatedSegment (Segment associatedSegment, int alignmentIndex, int lodLevel) {
         // TODO
     }
+
+
+    /**
+     * Applies styles from another node to this node
+     * Changes includes: 
+     * - {@link Element#name}
+     * - {@link Node#hasStopSign}
+     * - {@link Node#hasTrafficLight}
+     * - {@link Node#isAuxNode}
+     * @param srcNode - source node
+     */
+    public void stylePainter (Node srcNode, Editor editor) {
+        this.setName(srcNode.getName(), editor);
+        this.hasStopSign(srcNode.hasStopSign(), editor);
+        this.hasTrafficLight(srcNode.hasTrafficLight(), editor);
+        this.setAux(srcNode.isAux(), editor);
+    }
+
+    @Override
+    public void renderTo(Player player) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'renderTo'");
+    }
+
+    @Override
+    public void renderTo(Editor editor) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'renderTo'");
+    }
+
 }
