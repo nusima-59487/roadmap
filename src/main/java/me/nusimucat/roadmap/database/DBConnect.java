@@ -19,7 +19,7 @@ public class DBConnect {
             String dbName = ConfigLoader.getStringVal("database.name");
             String userName = ConfigLoader.getStringVal("database.username");
             String password = ConfigLoader.getStringVal("database.password");
-            connection = DriverManager.getConnection("jdbc:mysql://" + URL + "/" + dbName + "?autoReconnect=true", userName, password);
+            connection = DriverManager.getConnection("jdbc:mysql://" + URL + "/" + dbName + "?autoReconnect=true&allowMultiQueries=true", userName, password);
             Roadmap.getLoggerInstance().info("Database (MySQL - " + dbName + ") loaded successfully!"); 
             // TODO: new SylvBankDBTasks().createTables();
         }
