@@ -21,13 +21,14 @@ CREATE TABLE IF NOT EXISTS Nodes (
 
 ### 2: create segments table
 CREATE TABLE IF NOT EXISTS Segments (
-    segment_id INT NOT NULL AUTO_INCREMENT,
+    segment_id INT NOT NULL AUTO_INCREMENT, /* should not UPDATE */
     starting_node INT NOT NULL,
     ending_node INT NOT NULL,
     y_index TINYINT UNSIGNED NOT NULL DEFAULT 10,
     is_one_way BOOLEAN NOT NULL DEFAULT FALSE, 
     lane_count_forward INT NOT NULL DEFAULT 2,
     lane_count_backward INT DEFAULT 2,
+    dist INT NOT NULL, /* distance in centimeters */ 
     speed_limit INT NOT NULL DEFAULT 50,
     road_type VARCHAR(15) NOT NULL DEFAULT "Road",
     name VARCHAR(256), 
@@ -43,10 +44,10 @@ CREATE TABLE IF NOT EXISTS Segments (
 
 ### 3: create segment and aux node relations table
 CREATE TABLE SegmentAlignments ( /*aux node connections*/
-    segment_id INT NOT NULL, 
-    aux_node_id INT NOT NULL,
+    segment_id INT NOT NULL, /* should not UPDATE */ 
+    aux_node_id INT UNIQUE NOT NULL, /* should not UPDATE */
     alignment_index INT NOT NULL,
-    lod_level INT NOT NULL DEFAULT 1, /* smaller number = loaded when zoomed in smaller */
+    lod_level TINYINT UNSIGNED NOT NULL DEFAULT 1, /* smaller number = loaded when zoomed in smaller */
     create_time DATETIME NOT NULL DEFAULT NOW(),
     last_update_user_uuid VARCHAR(36) NOT NULL,
     last_update_time DATETIME NOT NULL DEFAULT NOW(),
@@ -72,6 +73,19 @@ CREATE TABLE NodeConnections ( /*Main node connections*/
     PRIMARY KEY (node_id, direction)
 );
 
+### 5: Create History Table for reference
+CREATE TABLE ChangeHistory (
+    entry_id INT NOT NULL AUTO_INCREMENT,
+    node_associated INT,
+    segment_associated INT,
+    message VARCHAR(256),
+    user_uuid VARCHAR(36) NOT NULL,
+    update_time DATETIME NOT NULL DEFAULT NOW(),
+    /* Foreign Key (node_associated) REFERENCES Nodes(node_id), 
+    Foreign Key (segment_associated) REFERENCES Segments(segment_id), */
+    PRIMARY KEY (entry_id) 
+); 
+
 # Methods
 ### static void DBMethods.addSegment(int startNode, String startNodeDir, int endNode, String endNodeDir, int lanesForward, int lanesBackward, int speed, String type, UUID createUser)
 CREATE PROCEDURE add_segment (
@@ -83,9 +97,9 @@ CREATE PROCEDURE add_segment (
     IN lanes_backward INT,
     IN speed INT,
     IN type VARCHAR(15),
-    IN create_user VARCHAR(36)
+    IN create_user VARCHAR(36), 
+    OUT segment_key INT
 ) BEGIN
-    DECLARE segment_key INT;
     IF (select aux_node from nodes where node_id = start_node) = 0 THEN update nodes set aux_node = TRUE where node_id = start_node; END IF; /* change nodes into main if aux */
     IF (select aux_node from nodes where node_id = end_node) = 0 THEN update nodes set aux_node = TRUE where node_id = end_node; END IF; /* change nodes into main if aux */
     INSERT INTO segments (starting_node, ending_node, lane_count_forward, lane_count_backward, road_type, speed_limit, last_update_user_uuid)
@@ -102,16 +116,18 @@ END;
 CREATE PROCEDURE create_aux_node (
     IN segment INT, 
     IN node_index INT,
+    IN lod INT,
+    IN name VARCHAR(256), 
     IN coordx INT,
     IN coordz INT,
-    IN create_user VARCHAR(36)
+    IN create_user VARCHAR(36), 
+    OUT node_key INT,
 ) BEGIN
-    DECLARE node_key INT;
     INSERT INTO nodes (coord_x, coord_z, aux_node, last_update_user_uuid)
         VALUES (coordx, coordz, TRUE, create_user);
     SET node_key = LAST_INSERT_ID();
-    INSERT INTO segmentalignments (segment_id, aux_node_id, alignment_index, last_update_user_uuid)
-        VALUES (segment, node_key, node_index, create_user);
+    INSERT INTO segmentalignments (segment_id, aux_node_id, alignment_index, lod_level, last_update_user_uuid)
+        VALUES (segment, node_key, node_index, lod, create_user);
 END;
 
 ### static Node DBMethods.getNodeIdFromCoords(int coordx, int coordz) 
@@ -146,3 +162,7 @@ SELECT * FROM `Nodes` WHERE node_id = @ids; # return empty set if no matches
 
 INSERT INTO Segments (starting_node, ending_node, last_update_user_uuid) VALUES 
     (1, 2, "4c15b77c-7a44-46c7-953b-ff0d1c67a653");
+
+
+
+SELECT * FROM Nodes ORDER BY SQRT(POWER(ABS(coord_x - ?), 2) + POWER(ABS(coord_z - ?), 2)) LIMIT 1; 
