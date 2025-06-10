@@ -1,4 +1,4 @@
-package me.nusimucat.roadmap;
+package me.nusimucat.roadmap.util;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -7,7 +7,11 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
+import me.nusimucat.roadmap.Roadmap;
+
 import java.util.Map.Entry;
+
 public class Utils {
     /**
      * Read a file and return its content as a string
