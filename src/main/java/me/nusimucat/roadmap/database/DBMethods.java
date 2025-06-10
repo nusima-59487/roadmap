@@ -1,17 +1,22 @@
 package me.nusimucat.roadmap.database;
 
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
 import org.json.JSONObject;
 
-import me.nusimucat.roadmap.Utils;
-import me.nusimucat.roadmap.Node.Directions;
+import me.nusimucat.roadmap.util.Result;
+import me.nusimucat.roadmap.util.Utils;
+import me.nusimucat.roadmap.objects.Node;
+import me.nusimucat.roadmap.objects.Segment;
+import me.nusimucat.roadmap.objects.Node.Directions;
 
 public class DBMethods {
     private static final Connection connectionSQL = DBConnect.getConnection(); 
@@ -31,80 +36,182 @@ public class DBMethods {
         return; 
     }
 
-    /**
-     * Create a main node
-     * @param xcoords int
-     * @param zcoords int
-     * @param name String
-     * @param hasStopSign Bool
-     * @param hasTrafficLight Bool
-     * @param creatorUuid UUID, null for console
-     * @return int - Created Node ID
-     * @throws SQLException if SQL error occurs
-     */
-    public static int createMainNode(
-        int xcoords, int zcoords, String name, Boolean hasStopSign, Boolean hasTrafficLight, UUID creatorUuid
-    ) throws SQLException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'createMainNode'");
-    }
-
-    public static int createAuxNode(int xcoords, int zcoords, String name, UUID creatorUuid) throws SQLException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'createAuxNode'");
-    }
-
-    public static int createSegment (int startNodeID, Directions startNodeDir, int endNodeID, Directions endNodeDir, int lanesForward, int lanesBackward, String type, UUID createUser) throws SQLException {
-        // TODO
-    }
-
-    public static void updateNode () throws SQLException {
-        // TODO
-    }
-
-    public static void editSegment () throws SQLException {
-        // TODO
-    }
-
-    public static void deleteNode () throws SQLException {
-        // TODO
-    }
-
-    public static void deleteSegment () throws SQLException {
-        // TODO
-    }
-
-    public static HashMap<String, Object> getNodeInfo(int NodeID) throws SQLException {
-        // TODO Auto-generated method stub
-        // throw new UnsupportedOperationException("Unimplemented method 'getNode'");
-
-        PreparedStatement getNodeStmt = connectionSQL.prepareStatement(databaseStatements.getString("get_node_from_id"));
-        getNodeStmt.setInt(1, NodeID);
-
-        ResultSet result = getNodeStmt.executeQuery(); 
-        if (result.next()) {
-            HashMap<String, Object> nodeInfo = new HashMap<String, Object>(); 
-            nodeInfo.put("coord_x", result.getInt("coord_x")); 
-            nodeInfo.put("coord_z", result.getInt("coord_z")); 
-            nodeInfo.put("is_main_node", result.getBoolean("is_main_node")); 
-            nodeInfo.put("connection_n", result.getInt("connection_n")); 
-            nodeInfo.put("connection_ne", result.getInt("connection_ne")); 
-            nodeInfo.put("connection_e", result.getInt("connection_e")); 
-            nodeInfo.put("connection_se", result.getInt("connection_se")); 
-            nodeInfo.put("connection_s", result.getInt("connection_s")); 
-            nodeInfo.put("connection_sw", result.getInt("connection_sw")); 
-            nodeInfo.put("connection_w", result.getInt("connection_w")); 
-            nodeInfo.put("connection_nw", result.getInt("connection_nw")); 
-            nodeInfo.put("create_time", result.getTimestamp("create_time")); 
-            nodeInfo.put("last_update_username", result.getString("last_update_username")); 
-            nodeInfo.put("last_update_time", result.getTimestamp("last_update_time")); 
-            return nodeInfo; 
+    /**@return ID of created segment */
+    public static Result<Integer, String> callAddSegment (Segment segment) {
+        // verify starting node and ending node?
+        try {
+            CallableStatement stmt = connectionSQL.prepareCall(databaseStatements.getString("call_add_segment")); 
+            stmt.setInt(1, segment.getStartingNode().getId());
+            stmt.setString(2, segment.getStartingNode().getDirectionFromSegment(segment).toString());
+            stmt.setInt(3, segment.getEndingNode().getId());
+            stmt.setString(4, segment.getEndingNode().getDirectionFromSegment(segment).toString());
+            stmt.setInt(5, segment.getLaneCountForward());
+            stmt.setInt(6, segment.getLaneCountBackward());
+            stmt.setInt(7, segment.getSpeedLimit());
+            stmt.setString(8, segment.getRoadType());
+            stmt.setString(9, segment.getPlayerUpdated() == null ? "console" : segment.getPlayerUpdated().toString());
+            stmt.registerOutParameter(10, java.sql.Types.INTEGER); 
+            
+            stmt.execute(); 
+            
+            return Result.ok(stmt.getInt(10)); 
+        } catch (Exception e) {
+            return Result.err(e.toString()); 
         }
-        return null; 
+    }
+    
+    /**@return ID of created node */
+    public static Result<Integer,String> callCreateAuxNode (Node node) {
+        if (!(node.isAux())) return Result.err("Node is in wrong type, use DBMethods#createMainNode instead"); 
+        try {
+            PreparedStatement stmt = connectionSQL.prepareStatement(databaseStatements.getString("insert_node")); 
+            stmt.setInt(1, node.getLocationX());
+            stmt.setInt(2, node.getLocationZ());
+            stmt.setString(3, node.getName());
+            stmt.setBoolean(4, true);
+            stmt.setNull(5, java.sql.Types.BOOLEAN);
+            stmt.setNull(6, java.sql.Types.BOOLEAN); 
+            stmt.setString(7, node.getPlayerUpdated() == null ? "console" : node.getPlayerUpdated().toString());
+            
+            int rowsAffected = stmt.executeUpdate(); 
+            
+            if (rowsAffected > 0) {
+                // Retrieve the auto-generated keys (insert ID)
+                ResultSet generatedKeys = stmt.getGeneratedKeys();
+                if (generatedKeys.next()) {
+                    int insertId = generatedKeys.getInt(1);
+                    return Result.ok(insertId); 
+                }
+                return Result.err("Failed to retreive insert ID"); 
+            }
+            return Result.err("No records inserted");
+        } catch (Exception e) {
+            return Result.err(e.toString()); 
+        }
+    }
+            
+            
+    public static Result<Boolean, String> callUpdateSegmentStartingNode (Segment segment, Node startingNode) {
+        
+    }
+    
+    public static Result<Boolean, String> callUpdateSegmentEndingNode (Segment segment, Node endingNode) {
+        
+    }
+            
+    /**@return ID of created node */
+    public static Result<Integer,String> insertNode (Node node) {
+        if (node.isAux()) return Result.err("Node is in wrong type, use DBMethods#createAuxNode instead"); 
+        try {
+            PreparedStatement stmt = connectionSQL.prepareStatement(databaseStatements.getString("insert_node")); 
+            stmt.setInt(1, node.getLocationX());
+            stmt.setInt(2, node.getLocationZ());
+            stmt.setString(3, node.getName());
+            stmt.setBoolean(4, false);
+            stmt.setBoolean(5, node.hasStopSign());
+            stmt.setBoolean(6, node.hasTrafficLight());
+            stmt.setString(7, node.getPlayerUpdated() == null ? "console" : node.getPlayerUpdated().toString());
+
+            int rowsAffected = stmt.executeUpdate(); 
+
+            if (rowsAffected > 0) {
+                // Retrieve the auto-generated keys (insert ID)
+                ResultSet generatedKeys = stmt.getGeneratedKeys();
+                if (generatedKeys.next()) {
+                    int insertId = generatedKeys.getInt(1);
+                    return Result.ok(insertId); 
+                }
+                return Result.err("Failed to retreive insert ID"); 
+            }
+            return Result.err("No records inserted");
+        } catch (Exception e) {
+            return Result.err(e.toString()); 
+        }
     }
 
-    public static HashMap<String, Object> getSegmentInfo(int SegmentID) throws SQLException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getSegmentInfo'");
+    public static Result<Boolean, String> updateNode () throws SQLException {
+        // TODO
+    }
+    
+    public static Result<Boolean, String> deleteNode () throws SQLException {
+        // TODO
+    }
+
+    public static Result<Boolean, String> updateSegment () throws SQLException {
+        // TODO
+    }
+            
+    public static Result<Boolean, String> deleteSegment () throws SQLException {
+        // TODO
+    }
+    
+    public static Result<Integer, String> insertHistory (String message) {
+        
+    }
+
+    public static Result<Node,String> selectNodeFromId (int nodeId) {
+        try {
+            PreparedStatement getNodeStmt = connectionSQL.prepareStatement(databaseStatements.getString("select_node_from_id"));
+            getNodeStmt.setInt(1, nodeId);
+
+            ResultSet result = getNodeStmt.executeQuery(); 
+            if (result.next()) {
+                Result<HashMap<Directions, Integer>, String> connectionsResult = selectConnectionsFromNodeId(nodeId);
+                if (connectionsResult.isErr()) return Result.err(connectionsResult.getError());  
+                
+                Node nodeToReturn = new Node(
+                    result.getInt("coord_x"), 
+                    result.getInt("coord_z"),
+                    result.getString("name"), 
+                    result.getBoolean("is_main_node"),
+                    connectionsResult.getValueOrThrow(), 
+                    result.getBoolean("has_stop_sign"), 
+                    result.getBoolean("has_traffic_light"), 
+                    result.getTimestamp("create_time"), 
+                    UUID.fromString(
+                        result.getString("last_update_user_uuid")
+                    ),
+                    result.getTimestamp("last_update_time")
+                ); 
+                return Result.ok(nodeToReturn); 
+            }
+
+            return Result.err("No nodes match nodeId = " + nodeId);
+        } catch (Exception e) {
+            return Result.err(e.toString()); 
+        } 
+
+    }
+    
+    public static Result<ArrayList<Node>, String> selectNodesFromCoords (Object coords) {
+
+    }
+
+    public static Result<Node, String> selectNearestNodeFromCoords (Object coords) {
+        
+    }
+
+    public static Result<Segment, String> selectSegmentFromId(int SegmentID) {
+    
+    }
+
+    public static Result<HashMap<Directions, Integer>, String> selectConnectionsFromNodeId (int nodeId) {
+        // if (node.isAux()) return Result.err("Node is in wrong type, use DBMethods#createAuxNode instead"); 
+        try {
+            PreparedStatement stmt = connectionSQL.prepareStatement(databaseStatements.getString("select_connections_from_node_id")); 
+            stmt.setInt(1, nodeId);
+            ResultSet result = stmt.executeQuery(); 
+            HashMap<Directions, Integer> toReturn = new HashMap<Directions, Integer>(); 
+            while (result.next()) {
+                toReturn.put(
+                    Node.Directions.fromValue(result.getString("direction")), 
+                    result.getInt("segment_id")
+                ); 
+            }
+
+            return Result.ok(toReturn); 
+        } catch (Exception e) {
+            return Result.err(e.toString()); 
+        }
     }
 }
