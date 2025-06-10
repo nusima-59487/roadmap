@@ -15,10 +15,10 @@ public class DBConnect {
         String storageMethod = ConfigLoader.getStringVal("storage-method");
         // MySQL
         if (storageMethod.equalsIgnoreCase("mysql")) {
-            String URL = ConfigLoader.getStringVal("database.path"); 
-            String dbName = ConfigLoader.getStringVal("database.name");
-            String userName = ConfigLoader.getStringVal("database.username");
-            String password = ConfigLoader.getStringVal("database.password");
+            String URL = ConfigLoader.getStringVal("mysql-config.path"); 
+            String dbName = ConfigLoader.getStringVal("mysql-config.name");
+            String userName = ConfigLoader.getStringVal("mysql-config.username");
+            String password = ConfigLoader.getStringVal("mysql-config.password");
             connection = DriverManager.getConnection("jdbc:mysql://" + URL + "/" + dbName + "?autoReconnect=true&allowMultiQueries=true", userName, password);
             Roadmap.getLoggerInstance().info("Database (MySQL - " + dbName + ") loaded successfully!"); 
             // TODO: new SylvBankDBTasks().createTables();

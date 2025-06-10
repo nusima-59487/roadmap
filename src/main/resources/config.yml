@@ -6,7 +6,7 @@ storage-method: mysql
 
 # Config for MySQL
 # If using SQLite, ignore this
-database: 
+mysql-config: 
     path: "localhost"
     username: "root"
     password: "" # <- this is important
