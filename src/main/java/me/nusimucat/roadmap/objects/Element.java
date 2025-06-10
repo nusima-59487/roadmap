@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+
+import me.nusimucat.roadmap.util.Result;
 
 public abstract class Element {
     protected int id; 
@@ -35,9 +35,8 @@ public abstract class Element {
      * @param name
      * @param editor null for console
      */
-    public void setName (@NotNull String name, @Nullable Editor editor) {
+    public void setName (String name) {
         this.name = name; 
-        this.updateHistory(editor);
     };
 
     /** */
@@ -61,17 +60,15 @@ public abstract class Element {
      */
     public abstract void renderTo (Editor editor); 
 
-    /** */
-    protected void updateHistory (@Nullable Editor editor) {
+    public void updateHistory () {
         this.isSyncToDatabase = false; 
         this.timeUpdated = Timestamp.valueOf(LocalDateTime.now()); 
-        if (editor == null) {
-            this.playerUpdated = null; 
-        } else {
-            this.playerUpdated = editor.getPlayer().getUniqueId(); 
-        }
-    }; 
-
+    }
+    // if (editor == null) {
+    //     this.playerUpdated = null; 
+    // } else {
+    //     this.playerUpdated = editor.getPlayer().getUniqueId(); 
+    // }
     /** */
-    public abstract void updateToDatabase (); 
+    public abstract Result<Boolean,String> updateToDatabase (Editor editor); 
 }

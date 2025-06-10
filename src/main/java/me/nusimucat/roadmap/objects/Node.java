@@ -1,6 +1,5 @@
 package me.nusimucat.roadmap.objects;
 
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -9,8 +8,8 @@ import java.util.UUID;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
-import me.nusimucat.roadmap.Roadmap;
-import me.nusimucat.roadmap.Utils;
+import me.nusimucat.roadmap.util.Utils;
+import me.nusimucat.roadmap.util.Result;
 import me.nusimucat.roadmap.database.DBMethods;
 
 public class Node extends Element {
@@ -39,6 +38,13 @@ public class Node extends Element {
         Directions (String directionname) {
             this.directionname = directionname; 
         }
+
+        public static Directions fromValue(String val) {
+            for (Directions dir : Directions.values()) {
+                if (dir.directionname.equalsIgnoreCase(val)) return dir; 
+            }
+            throw new IllegalArgumentException("No matching value from string " + val);
+        }
         
         @Override
         public String toString() {
@@ -46,7 +52,7 @@ public class Node extends Element {
         }
     }; 
     
-    private Node (
+    public Node (
         int coordx, 
         int coordz, 
         String name, 
@@ -67,35 +73,16 @@ public class Node extends Element {
         this.hasTrafficLight = hasTrafficLight; 
     }
 
-    /** Constructor from Database */
-    public static Node fromDatabase (int nodeId) {
-        HashMap<String,Object> nodeInfo; 
-        try {
-            nodeInfo = DBMethods.getNodeInfo(nodeId);
-        } catch (SQLException e) {
-            Roadmap.getLoggerInstance().warn("Failed to get node info from database");
-            Roadmap.getLoggerInstance().warn(e.getMessage());
-            return null; 
-        }
-
-        HashMap<Directions, Integer> connections = new HashMap<Directions, Integer>();
-        // TODO: import connections from database
-        Node nodeToReturn = new Node(
-            (int) nodeInfo.get("coord_x"),
-            (int) nodeInfo.get("coord_z"),
-            (String) nodeInfo.get("name"),
-            (boolean) nodeInfo.get("is_aux_node"),
-            connections,
-            (boolean) nodeInfo.get("has_stop_sign"),
-            (boolean) nodeInfo.get("has_traffic_light"),
-            (Timestamp) nodeInfo.get("create_time"),
-            (UUID) nodeInfo.get("last_update_user_uuid"),
-            (Timestamp) nodeInfo.get("last_update_time")
-        ); 
-        nodeToReturn.id = nodeId;
-        nodeToReturn.isInDatabase = true;
-        nodeToReturn.isSyncToDatabase = true; 
-        return nodeToReturn;
+    /** Constructor from Database 
+     * @throws Exception if no nodes match the node id */
+    public static Node fromDatabase (int nodeId) throws Exception {
+        Result<Node, String> result = DBMethods.selectNodeFromId(nodeId); 
+        Node toReturn = result.getValueOrThrow(); 
+        
+        toReturn.id = nodeId;
+        toReturn.isInDatabase = true;
+        toReturn.isSyncToDatabase = true; 
+        return toReturn;
     }
 
     public static Node simpleConstruct (int coordx, int coordz, boolean isAux, Editor editor) {
@@ -116,63 +103,65 @@ public class Node extends Element {
     }
 
     @Override
-    public void updateToDatabase () {
-        try {
-            if (this.isInDatabase && this.isSyncToDatabase) return; 
-            else if (this.isInDatabase) {
-                // Update
-            } else {
-                // Insert
-                int nodeId = DBMethods.createMainNode(this); 
-                this.id = nodeId; 
-                this.isInDatabase = true; 
-            }
-            this.isSyncToDatabase = true; 
-        } catch (SQLException e) {
-            // TODO: handle exception
+    public Result<Boolean,String> updateToDatabase (Editor editor) {
+        if (this.isInDatabase && this.isSyncToDatabase) return Result.ok(true); 
+        else if (this.isInDatabase) {
+            // Update
+        } else {
+            // Insert
+            Result<Integer,String> nodeIdResult = DBMethods.insertNode(this); 
+            if (nodeIdResult.isErr()) return Result.err(nodeIdResult.getError()); 
+            this.id = nodeIdResult.getValueOrDefault(null); // default value never reaches
+            this.isInDatabase = true; 
         }
+        this.isSyncToDatabase = true; 
+        return Result.ok(true); 
     }
 
     public int getLocationX () {return this.coordx;}
     public int getLocationZ () {return this.coordz;}
-    public void setLocation (Location location, Editor editor) {
+    public void setLocation (Location location) {
         this.coordx = location.getBlockX(); 
         this.coordz = location.getBlockZ(); 
-        this.updateHistory(editor); 
+        this.updateHistory(); 
     }
-    public void setLocation (int coordX, int coordZ, Editor editor) {
+    public void setLocation (int coordX, int coordZ) {
         this.coordx = coordX; 
         this.coordz = coordZ; 
-        this.updateHistory(editor); 
+        this.updateHistory(); 
     }
-    public void setLocationX (int coordX, Editor editor) {
+    public void setLocationX (int coordX) {
         this.coordx = coordX;
-        this.updateHistory(editor); 
+        this.updateHistory(); 
     }
-    public void setLocationZ (int coordZ, Editor editor) {
+    public void setLocationZ (int coordZ) {
         this.coordz = coordZ;
-        this.updateHistory(editor); 
+        this.updateHistory(); 
     }
-    public void addSegmentConnection (Segment segment, Directions direction, Editor editor) {
+    public void addSegmentConnection (Segment segment, Directions direction) {
         if (this.connections.get(direction) != null) {
             throw new IllegalArgumentException(String.format("Direction %s already has a connection with another segment (ID %g)", direction, segment.getId()));
         }
         this.connections.put(direction, segment.getId()); 
-        this.updateHistory(editor); 
+        this.updateHistory(); 
     }
-    public void removeSegmentConnection (Directions direction, Editor editor) {
+    public void removeSegmentConnection (Directions direction) {
         this.connections.remove(direction); 
-        updateHistory(editor);    
+        this.updateHistory();    
     }
-    public void removeSegmentConnection (Segment segment, Editor editor) {
+    public void removeSegmentConnection (Segment segment) {
         if (this.connections.containsValue(segment.getId())) {
             Directions key = Utils.getKeyByValue(this.connections, segment.getId());
-            this.removeSegmentConnection(key, editor);
+            this.removeSegmentConnection(key);
         }
     }
-    public Segment getSegmentFromDirection (Directions direction) {
-        int segmentId = this.connections.get(direction); 
-        return Segment.fromDatabase(segmentId); 
+    public Result<Segment, String> getSegmentFromDirection (Directions direction) {
+        try {
+            int segmentId = this.connections.get(direction); 
+            return Result.ok(Segment.fromDatabase(segmentId)); 
+        } catch (Exception e) {
+            return Result.err(e.toString()); 
+        }
     }
     public Directions getDirectionFromSegment (Segment segment) {
         if (this.connections.containsValue(segment.getId())) {
@@ -184,51 +173,55 @@ public class Node extends Element {
     public boolean isAux () {
         return this.isAuxNode; 
     }
-    public void setAux (boolean isAux, Editor editor) {
+    public void setAux (boolean isAux) {
         if (isAux == this.isAuxNode) return; 
         if (isAux) this.isAuxNode = true; 
         else this.isAuxNode = false; 
-        this.updateHistory(editor);
+        this.updateHistory();
     }
     /**@return If aux, return <code>false</code>*/
     public boolean hasStopSign () {
         if (this.isAuxNode) return false; 
         return this.hasStopSign; 
     }
-    public void hasStopSign (boolean state, Editor editor) {
+    public void hasStopSign (boolean state) {
         if (this.isAuxNode) throw new IllegalStateException("Cannot change state hasStopSign for aux nodes"); 
         if (this.hasStopSign == state) return; 
         this.hasStopSign = state; 
         if (state) this.hasTrafficLight = false; 
-        this.updateHistory(editor);
+        this.updateHistory();
     }
     /**@return If aux, return <code>false</code>*/
     public boolean hasTrafficLight () {
         if (this.isAuxNode) return false; 
         return this.hasTrafficLight; 
     }
-    public void hasTrafficLight (boolean state, Editor editor) {
+    public void hasTrafficLight (boolean state) {
         if (this.isAuxNode) throw new IllegalStateException("Cannot change state hasStopSign for aux nodes"); 
         if (this.hasTrafficLight == state) return; 
         this.hasTrafficLight = state; 
         if (state) this.hasStopSign = false; 
-        this.updateHistory(editor);
+        this.updateHistory();
     }
 
-    /**@return If aux, return <code>-1</code>*/
+    /**@return If not aux, return <code>-1</code>*/
     public int getLODLevel () {
         if (!this.isAuxNode) return -1; 
         return this.lodLevel; 
     }
-    public void setLODLevel (int lodLevel, Editor editor) {
-        if (!this.isAuxNode) throw new IllegalStateException("Cannot change LOD Level for main nodes"); 
+    public void setLODLevel (int lodLevel) {
+        if (!this.isAuxNode) return; 
         this.lodLevel = lodLevel; 
-        this.updateHistory(editor); 
+        this.updateHistory(); 
     }
 
-    public Segment getAssociatedSegment () {
-        if (!this.isAuxNode) throw new IllegalStateException("Main nodes do not have associated segment"); 
-        return Segment.fromDatabase(this.associatedSegmentId); 
+    public Result<Segment, String> getAssociatedSegment () {
+        if (!this.isAuxNode) return Result.err("Main nodes do not have associated segment"); 
+        try {
+            return Result.ok(Segment.fromDatabase(this.associatedSegmentId)); 
+        } catch (Exception e) {
+            return Result.err(e.toString()); 
+        }
     }
     public void setAssociatedSegment (Segment associatedSegment, int alignmentIndex, int lodLevel) {
         // TODO
@@ -244,11 +237,11 @@ public class Node extends Element {
      * - {@link Node#isAuxNode}
      * @param srcNode - source node
      */
-    public void stylePainter (Node srcNode, Editor editor) {
-        this.setName(srcNode.getName(), editor);
-        this.hasStopSign(srcNode.hasStopSign(), editor);
-        this.hasTrafficLight(srcNode.hasTrafficLight(), editor);
-        this.setAux(srcNode.isAux(), editor);
+    public void stylePainter (Node srcNode) {
+        this.setName(srcNode.getName());
+        this.hasStopSign(srcNode.hasStopSign());
+        this.hasTrafficLight(srcNode.hasTrafficLight());
+        this.setAux(srcNode.isAux());
     }
 
     @Override

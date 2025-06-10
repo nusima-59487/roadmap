@@ -1,16 +1,14 @@
 package me.nusimucat.roadmap.objects;
 
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.UUID;
 
 import org.bukkit.entity.Player;
 
-import me.nusimucat.roadmap.Roadmap;
 import me.nusimucat.roadmap.database.DBMethods;
+import me.nusimucat.roadmap.util.Result;
 
 public class Segment extends Element {
     private int startNodeId; 
@@ -19,6 +17,7 @@ public class Segment extends Element {
     private boolean isOneWay; 
     private int laneCountForward; 
     private int laneCountBackward; 
+    private int distance; 
     private int speedLimit; 
     private String roadType; 
     private ArrayList<Node> alignmentAuxNodes; 
@@ -31,6 +30,7 @@ public class Segment extends Element {
         boolean isOneWay, 
         int laneCountForward, 
         int laneCountBackward, 
+        int distance, 
         int speedLimit, 
         String roadType, 
         Timestamp createTime, 
@@ -44,40 +44,22 @@ public class Segment extends Element {
         this.isOneWay = isOneWay; 
         this.laneCountBackward = laneCountBackward; 
         this.laneCountForward = laneCountForward; 
+        this.distance = distance; 
         this.roadType = roadType; 
         this.speedLimit = speedLimit; 
     }
     
-    /** Constructor from Database */
-    public static Segment fromDatabase (int segmentId) {
-        HashMap<String, Object> segmentInfo; 
-        try {
-            segmentInfo = DBMethods.getSegmentInfo(segmentId); 
-        } catch (SQLException e) {
-            Roadmap.getLoggerInstance().warn("Failed to get segment info from database");
-            Roadmap.getLoggerInstance().warn(e.getMessage()); 
-            return null; 
-        }
-
-        // TODO: Import alignmentAuxNodes from database
-        Segment segmentToReturn = new Segment(
-            (int) segmentInfo.get("starting_node"), 
-            (int) segmentInfo.get("ending_node"), 
-            (int) segmentInfo.get("y_index"), 
-            (String) segmentInfo.get("name"), 
-            (boolean) segmentInfo.get("is_one_way"), 
-            (int) segmentInfo.get("lane_count_forward"), 
-            (int) segmentInfo.get("lane_count_backward"), 
-            (int) segmentInfo.get("speed_limit"), 
-            (String) segmentInfo.get("road_type"), 
-            (Timestamp) segmentInfo.get("create_time"), 
-            (UUID) segmentInfo.get("last_update_user_uuid"), 
-            (Timestamp) segmentInfo.get("last_update_time")
-        ); 
-        segmentToReturn.id = segmentId; 
-        segmentToReturn.isInDatabase = true; 
-        segmentToReturn.isSyncToDatabase = true; 
-        return segmentToReturn;
+    /** Constructor from Database
+     *  @throws Exception if no segments match the segment id
+     */
+    public static Segment fromDatabase (int segmentId) throws Exception {
+        Result<Segment, String> result = DBMethods.selectSegmentFromId(segmentId); 
+        Segment toReturn = result.getValueOrThrow(); 
+        
+        toReturn.id = segmentId; 
+        toReturn.isInDatabase = true; 
+        toReturn.isSyncToDatabase = true; 
+        return toReturn;
     }
 
     public static Segment simpleConstruct (Node startingNode, Node endingNode, Editor editor) {
@@ -90,6 +72,7 @@ public class Segment extends Element {
             false, 
             2, 
             2, 
+            0, 
             50, 
             "Road", 
             Timestamp.valueOf(LocalDateTime.now()), 
@@ -100,16 +83,24 @@ public class Segment extends Element {
     }
 
     @Override
-    public void updateToDatabase() {
+    public Result<Boolean,String> updateToDatabase (Editor editor) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'updateToDatabase'");
     }
 
-    public Node getStartingNode () {
-        return Node.fromDatabase(this.startNodeId); 
+    public Result<Node, String> getStartingNode () {
+        try {
+            return Result.ok(Node.fromDatabase(this.startNodeId));
+        } catch (Exception e) {
+            return Result.err(e.toString()); 
+        } 
     }
-    public Node getEndingNode () {
-        return Node.fromDatabase(this.endNodeId); 
+    public Result<Node, String> getEndingNode () {
+        try {
+            return Result.ok(Node.fromDatabase(this.endNodeId));
+        } catch (Exception e) {
+            return Result.err(e.toString()); 
+        } 
     }
     // public void setStartingNode (Node startingNode, Editor editor) {
     //     this.startNodeId = startingNode.getId(); 
@@ -123,88 +114,98 @@ public class Segment extends Element {
     public int getYIndex () {
         return this.yIndex; 
     }
-    public void setYIndex (int yIndex, Editor editor) {
+    public void setYIndex (int yIndex) {
         this.yIndex = yIndex; 
-        this.updateHistory(editor);
+        this.updateHistory();
     }
 
     public boolean isOneWay () {
         return this.isOneWay; 
     }
-    public void setOneWay (boolean oneWay, Editor editor) {
+    public void setOneWay (boolean oneWay) {
         this.isOneWay = oneWay; 
-        this.updateHistory(editor);
+        this.updateHistory();
     }
 
     public int getLaneCountForward () {
         return this.laneCountForward; 
     }
     public int getLaneCountBackward () {
-        // one way check?
+        // TODO: one way check?
         return this.laneCountBackward; 
     }
-    public void setLaneCountForward (int laneCount, Editor editor) {
+    public void setLaneCountForward (int laneCount) {
         this.laneCountForward = laneCount; 
-        this.updateHistory(editor);
+        this.updateHistory();
     }
-    public void setLaneCountBackward (int laneCount, Editor editor) {
+    public void setLaneCountBackward (int laneCount) {
         // one way check?
         this.laneCountBackward = laneCount; 
-        this.updateHistory(editor);
+        this.updateHistory();
     }
-    public void setLaneCount (int laneCount, Editor editor) {
+    public void setLaneCount (int laneCount) {
         this.laneCountBackward = laneCount; 
         this.laneCountForward = laneCount; 
-        this.updateHistory(editor);
+        this.updateHistory();
+    }
+
+    public int getDistance () {
+        return this.distance; 
+    }
+    public void setDistance (int distance) {
+        this.distance = distance; 
     }
 
     public int getSpeedLimit () {
         return this.speedLimit; 
     }
-    public void setSpeedLimit (int speed, Editor editor) {
+    public void setSpeedLimit (int speed) {
         this.speedLimit = speed; 
-        this.updateHistory(editor);
+        this.updateHistory();
     }
 
     public String getRoadType () {
         return this.roadType; 
     }
-    public void setRoadType (String roadType, Editor editor) {
+    public void setRoadType (String roadType) {
         this.roadType = roadType; 
-        this.updateHistory(editor);
+        this.updateHistory();
     }
 
     public ArrayList<Node> getAuxNodes () {
         return this.alignmentAuxNodes; 
     }
-    public void appendAuxNode (Node node, int alignmentIndex, Editor editor) {
+    public void appendAuxNode (Node node, int alignmentIndex) {
         this.alignmentAuxNodes.add(alignmentIndex, node);
-        this.updateHistory(editor);
+        this.updateHistory();
     }
-    public void removeAllAuxNodes (Editor editor) {
+    public void removeAllAuxNodes () {
         this.alignmentAuxNodes.clear();
-        this.updateHistory(editor);
+        this.updateHistory();
     }
 
     /**
-     * Applies styles from another segment to this segment
+     * Applies styles from another segment to this segment 
+     * <hr>
      * Changes includes: 
-     * - {@link Element#name}
-     * - {@link Segment#yIndex}
-     * - {@link Segment#isOneWay}
-     * - {@link Segment#laneCountForward}
-     * - {@link Segment#laneCountBackward}
-     * - {@link Segment#speedLimit}
-     * - {@link Segment#roadType}
-     * @param srcNode - source node
+     * <ul>
+     *     <li> {@link Element#name}
+     *     <li> {@link Segment#yIndex}
+     *     <li> {@link Segment#isOneWay}
+     *     <li> {@link Segment#laneCountForward}
+     *     <li> {@link Segment#laneCountBackward}
+     *     <li> {@link Segment#speedLimit}
+     *     <li> {@link Segment#roadType}
+     * </ul> 
+     * @param srcSegment - source segment
      */
-    public void stylePainter (Segment srcSegment, Editor editor) {
-        this.setName(srcSegment.getName(), editor);
-        this.setYIndex(srcSegment.getYIndex(), editor);
-        this.setOneWay(srcSegment.isOneWay(), editor);
-        this.setLaneCountForward(srcSegment.getLaneCountForward(), editor);
-        this.setLaneCountBackward(srcSegment.getLaneCountBackward(), editor);
-        this.setSpeedLimit(srcSegment.getSpeedLimit(), editor);
+    public void stylePainter (Segment srcSegment) {
+        this.setName(srcSegment.getName());
+        this.setYIndex(srcSegment.getYIndex());
+        this.setOneWay(srcSegment.isOneWay());
+        this.setLaneCountForward(srcSegment.getLaneCountForward());
+        this.setLaneCountBackward(srcSegment.getLaneCountBackward());
+        this.setSpeedLimit(srcSegment.getSpeedLimit());
     }
 
     @Override
